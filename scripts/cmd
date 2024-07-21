@@ -33,7 +33,12 @@ execute_ping() {
   local ping_cmd="ping"
   [ -n "$src_address" ] && ping_cmd="$ping_cmd -I $src_address"
   [ -n "$num_pings" ] && ping_cmd="$ping_cmd -c $num_pings"
-  [ -n "$timeout" ] && ping_cmd="$ping_cmd -W $timeout"
+  [ -n "$timeout" ] && {
+    timeout_sec=$((timeout / 1000))
+    #TODO: Bandaid fix. Linux ping does not support timeout in milliseconds.
+    [ "$timeout_sec" -lt 1 ] && timeout_sec=1
+    ping_cmd="$ping_cmd -W $timeout_sec"
+  }
   ping_cmd="$ping_cmd $target"
 
   local tmpfile=$(mktemp /tmp/pingoutput.XXXXXX)
