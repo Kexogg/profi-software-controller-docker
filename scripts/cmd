@@ -1,68 +1,117 @@
 #!/bin/sh
+# shellcheck disable=SC3043
 
 LOG_FILE="/var/log/cmd_script.log"
 
-run_command() {
-    case "$1" in
-        "/ipcom/bin/curl/curl-32.exe")
-            shift
-            /usr/bin/curl "$@"
-            ;;
-        "/ipcom/date.bat")
-            date "+%Y.%m.%d"
-            read -n 1 -p "Press any key to continue"
-            ;;
-        "/cecho")
-            date "+%H:%M" | sed 's/^0//'
-            ;;
-        "netstat")
-            shift
-            if [ -n "$6" ] && [ -n "$7" ] && [ -n "$8" ]; then
-                /bin/netstat -tulnp | grep "$4" | grep -c "${8:0:6}"
-            else
-                /bin/netstat -tulnp | grep "$4"
-            fi
-            ;;
-        "ipconfig")
-            shift
-            ipconfig "$@"
-            ;;
-        "ping")
-            # Spaghetti code to mimic Windows ping command
-            shift
-                # Capture the output of ping command
-                output=$(ping -c 4 "$@" 2>&1)
-                # Extract the IP address
-                ip=$(echo "$output" | grep 'PING' | cut -d '(' -f2 | cut -d ')' -f1)
-                echo "Pinging $1 [$ip] with 32 bytes of data:"
-                # Extract and format each reply
-                echo "$output" | grep 'ttl=' | while IFS= read -r line; do
-                    ttl=$(echo "$line" | awk -F' ' '{for(i=1;i<=NF;i++) if ($i ~ /ttl=/) print substr($i,5)}')
-                    time=$(echo "$line" | awk -F' ' '{for(i=1;i<=NF;i++) if ($i ~ /time=/) print substr($i,6)}')
-                    echo "Reply from $ip: time=${time}ms TTL=${ttl}"
-                done
-                # Extract packet statistics
-                packets=$(echo "$output" | grep 'packets transmitted' )
-                echo ""
-                echo "Ping statistics for $ip:"
-                echo "    Packets: Sent = $(echo "$packets" | awk '{print $1}'), Received = $(echo "$packets" | awk '{print $4}'), Lost = $(echo "$packets" | awk '{print $1 - $4}') ($(echo "$packets" | awk '{print $6}'))"
-                # Extract round trip times
-                rtt=$(echo "$output" | grep 'rtt min/avg/max/mdev' | cut -d '=' -f2)
-                min=$(echo "$rtt" | cut -d '/' -f1)
-                avg=$(echo "$rtt" | cut -d '/' -f2)
-                max=$(echo "$rtt" | cut -d '/' -f3)
-                echo "Approximate round trip times in milli-seconds:"
-                echo "    Minimum = ${min}ms, Maximum = ${max}ms, Average = ${avg}ms"
-                ;;
-        *)
-            echo "Unsupported command: $1"
+execute_ping() {
+  local src_address=""
+  local num_pings="4"
+  local timeout=""
+  local target=""
 
-            ;;
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+    -S)
+      src_address="$2"
+      shift 2
+      ;;
+    -n)
+      num_pings="$2"
+      shift 2
+      ;;
+    -w)
+      timeout="$2"
+      shift 2
+      ;;
+    *)
+      target="$1"
+      shift
+      ;;
     esac
+  done
+
+  local ping_cmd="ping"
+  [ -n "$src_address" ] && ping_cmd="$ping_cmd -I $src_address"
+  [ -n "$num_pings" ] && ping_cmd="$ping_cmd -c $num_pings"
+  [ -n "$timeout" ] && ping_cmd="$ping_cmd -W $timeout"
+  ping_cmd="$ping_cmd $target"
+
+  local tmpfile=$(mktemp /tmp/pingoutput.XXXXXX)
+  eval "$ping_cmd > $tmpfile 2>&1 &"
+  local pid=$!
+
+  tail -f "$tmpfile" | while IFS= read -r line; do
+    case "$line" in
+    *'PING'*)
+      local ip=$(echo "$line" | cut -d '(' -f2 | cut -d ')' -f1)
+      echo "Pinging $target [$ip] with 32 bytes of data:"
+      ;;
+    *'from'* | *'ttl='* | *'From'*)
+      local ttl=$(echo "$line" | awk -F' ' '{for(i=1;i<=NF;i++) if ($i ~ /ttl=/) print substr($i,5)}')
+      local time=$(echo "$line" | awk -F' ' '{for(i=1;i<=NF;i++) if ($i ~ /time=/) print substr($i,6)}')
+      if [ -z "$time" ]; then
+        echo "$line"
+      else
+        echo "Reply from $ip: time=${time}ms TTL=${ttl}"
+      fi
+      ;;
+    *'packets transmitted'*)
+      echo ""
+      echo "Ping statistics for $ip:"
+      echo "    Packets: Sent = $(echo "$line" | awk '{print $1}'), Received = $(echo "$line" | awk '{print $4}'), Lost = $(echo "$line" | awk '{print $1 - $4}') ($(echo "$line" | awk '{print $6}'))"
+      ;;
+    *'rtt min/avg/max/mdev'*)
+      local rtt=$(echo "$line" | cut -d '=' -f2)
+      local min=$(echo "$rtt" | cut -d '/' -f1)
+      local avg=$(echo "$rtt" | cut -d '/' -f2)
+      local max=$(echo "$rtt" | cut -d '/' -f3)
+      echo "Approximate round trip times in milli-seconds:"
+      echo "    Minimum = ${min}ms, Maximum = ${max}ms, Average = ${avg}ms"
+      ;;
+    esac
+  done &
+  wait $pid
+  rm "$tmpfile"
 }
 
-echo "$(date): $*" >> "$LOG_FILE"
-if [ "$1" = "/c" ] || [ "$1" = "/C" ] || [ "$1" = "/k" ]; then
+run_command() {
+  case "$1" in
+  "/ipcom/bin/curl/curl-32.exe")
     shift
+    /usr/bin/curl "$@"
+    ;;
+  "/ipcom/date.bat")
+    date "+%Y.%m.%d"
+    read -n 1 -p "Press any key to continue"
+    ;;
+  "/cecho")
+    date "+%H:%M" | sed 's/^0//'
+    ;;
+  "netstat")
+    shift
+    if [ -n "$6" ] && [ -n "$7" ] && [ -n "$8" ]; then
+      /bin/netstat -tulnp | grep "$4" | grep -c "${8:0:6}"
+    else
+      /bin/netstat -tulnp | grep "$4"
+    fi
+    ;;
+  "ipconfig")
+    shift
+    ipconfig "$@"
+    ;;
+  "ping")
+    shift
+    execute_ping "$@"
+    ;;
+  *)
+    echo "Unsupported command: $1"
+
+    ;;
+  esac
+}
+
+echo "$(date): $*" >>"$LOG_FILE"
+if [ "$1" = "/c" ] || [ "$1" = "/C" ] || [ "$1" = "/k" ]; then
+  shift
 fi
 run_command "$@"
