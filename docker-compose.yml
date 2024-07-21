@@ -3,15 +3,18 @@ services:
     build: .
     # Uncomment the following line to use the image from the GitHub Container Registry
     #image: ghcr.io/kexogg/profi-software-controller-docker:master
-    ports:
-      - "8070:8070"
     depends_on:
       - mongo
       - redis
+    volumes:
     # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
-    #volumes:
     #  - ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
     #  - ./files/nginx/:/ipcom/nginx/
+      - ipcom_data:/ipcom/data/
+    networks:
+      internal:
+      dockervlan:
+        ipv4_address: 10.0.70.10 # Change the IP address if needed
   mongo:
     image: mongo:latest
     environment:
@@ -29,3 +32,17 @@ services:
 volumes:
   mongo_data:
   redis_data:
+
+networks:
+  internal:
+    external: false
+  dockervlan:
+    name: dockervlan
+    driver: macvlan
+    driver_opts:
+      parent: ens18 # Set the parent interface to your network interface
+    ipam:
+      config: # Change the IP settings if needed
+        - subnet: "10.0.0.0/8"
+          ip_range: "10.0.70.0/24"
+          gateway: "10.0.0.1"

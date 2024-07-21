@@ -26,15 +26,18 @@ services:
       build: .
       # Uncomment the following line to use the image from the GitHub Container Registry
       #image: ghcr.io/kexogg/profi-software-controller-docker:master
-      ports:
-         - "8070:8070"
       depends_on:
          - mongo
          - redis
-      # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
-      #volumes:
-      #  - ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
-      #  - ./files/nginx/:/ipcom/nginx/
+      volumes:
+         # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
+         #  - ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
+         #  - ./files/nginx/:/ipcom/nginx/
+         - ipcom_data:/ipcom/data/
+      networks:
+         internal:
+         dockervlan:
+            ipv4_address: 10.0.70.10 # Change the IP address if needed
    mongo:
       image: mongo:latest
       environment:
@@ -44,15 +47,35 @@ services:
       volumes:
          - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
          - mongo_data:/data/db
+      networks:
+         internal:
    redis:
       image: redis:latest
       command: /bin/sh -c "redis-server --requirepass fqta,dacb21db" # Do not change the password
       volumes:
          - redis_data:/data
+      networks:
+         internal:
 volumes:
    mongo_data:
    redis_data:
+   ipcom_data:
+      
+networks:
+   internal:
+      external: false
+   dockervlan:
+      name: dockervlan
+      driver: macvlan
+      driver_opts:
+         parent: ens18 # Set the parent interface to your network interface
+      ipam:
+         config: # Change the IP settings if needed
+            - subnet: "10.0.0.0/8"
+              ip_range: "10.0.70.0/24"
+              gateway: "10.0.0.1"
 ```
+You need to manually set parent interface and IP settings in the `docker-compose.yml` file. You can find the interface name by running `ip a` command.
 
 ### Environment Variables
 | Variable | Description | Default |
