@@ -1,0 +1,29 @@
+services:
+  controller:
+    build: .
+    ports:
+      - "8070:8070"
+    depends_on:
+      - mongo
+      - redis
+    # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
+    #volumes:
+    #  - ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
+    #  - ./files/nginx/:/ipcom/nginx/
+  mongo:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin # Can be changed
+      MONGO_INITDB_ROOT_PASSWORD: admin # Can be changed
+      MONGO_INITDB_DATABASE: soft_ac # Do not change
+    volumes:
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - mongo_data:/data/db
+  redis:
+    image: redis:latest
+    command: /bin/sh -c "redis-server --requirepass fqta,dacb21db" # Do not change the password
+    volumes:
+      - redis_data:/data
+volumes:
+  mongo_data:
+  redis_data:

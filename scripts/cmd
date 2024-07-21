@@ -1,0 +1,68 @@
+#!/bin/sh
+
+LOG_FILE="/var/log/cmd_script.log"
+
+run_command() {
+    case "$1" in
+        "/ipcom/bin/curl/curl-32.exe")
+            shift
+            /usr/bin/curl "$@"
+            ;;
+        "/ipcom/date.bat")
+            date "+%Y.%m.%d"
+            read -n 1 -p "Press any key to continue"
+            ;;
+        "/cecho")
+            date "+%H:%M" | sed 's/^0//'
+            ;;
+        "netstat")
+            shift
+            if [ -n "$6" ] && [ -n "$7" ] && [ -n "$8" ]; then
+                /bin/netstat -tulnp | grep "$4" | grep -c "$8"
+            else
+                /bin/netstat -tulnp | grep "$4"
+            fi
+            ;;
+        "ipconfig")
+            shift
+            ipconfig "$@"
+            ;;
+        "ping")
+            # Spaghetti code to mimic Windows ping command
+            shift
+                # Capture the output of ping command
+                output=$(ping -c 4 "$@" 2>&1)
+                # Extract the IP address
+                ip=$(echo "$output" | grep 'PING' | cut -d '(' -f2 | cut -d ')' -f1)
+                echo "Pinging $1 [$ip] with 32 bytes of data:"
+                # Extract and format each reply
+                echo "$output" | grep 'ttl=' | while IFS= read -r line; do
+                    ttl=$(echo "$line" | awk -F' ' '{for(i=1;i<=NF;i++) if ($i ~ /ttl=/) print substr($i,5)}')
+                    time=$(echo "$line" | awk -F' ' '{for(i=1;i<=NF;i++) if ($i ~ /time=/) print substr($i,6)}')
+                    echo "Reply from $ip: time=${time}ms TTL=${ttl}"
+                done
+                # Extract packet statistics
+                packets=$(echo "$output" | grep 'packets transmitted' )
+                echo ""
+                echo "Ping statistics for $ip:"
+                echo "    Packets: Sent = $(echo "$packets" | awk '{print $1}'), Received = $(echo "$packets" | awk '{print $4}'), Lost = $(echo "$packets" | awk '{print $1 - $4}') ($(echo "$packets" | awk '{print $6}'))"
+                # Extract round trip times
+                rtt=$(echo "$output" | grep 'rtt min/avg/max/mdev' | cut -d '=' -f2)
+                min=$(echo "$rtt" | cut -d '/' -f1)
+                avg=$(echo "$rtt" | cut -d '/' -f2)
+                max=$(echo "$rtt" | cut -d '/' -f3)
+                echo "Approximate round trip times in milli-seconds:"
+                echo "    Minimum = ${min}ms, Maximum = ${max}ms, Average = ${avg}ms"
+                ;;
+        *)
+            echo "Unsupported command: $1"
+
+            ;;
+    esac
+}
+
+echo "$(date): $*" >> "$LOG_FILE"
+if [ "$1" = "/c" ] || [ "$1" = "/C" ] || [ "$1" = "/k" ]; then
+    shift
+fi
+run_command "$@"

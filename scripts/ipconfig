@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# TODO: More testing required
+# Function to mimic ipconfig behavior
+ipconfig_linux() {
+  echo "Windows IP Configuration"
+    echo ""
+    # Check if /all flag is passed
+    if [[ "$1" == "/all" ]]; then
+          echo "   Host Name . . . . . . . . . . . . : $(hostname)"
+          echo "   Primary Dns Suffix  . . . . . . . : "
+          echo "   Node Type . . . . . . . . . . . . : Hybrid"
+          echo "   IP Routing Enabled. . . . . . . . : No"
+          echo "   WINS Proxy Enabled. . . . . . . . : No"
+          echo ""
+        for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
+            echo "Ethernet adapter $interface:"
+            ip -4 addr show "$interface" | awk '/inet / {sub(/\/.*/, "", $2); print "   IPv4 Address. . . . . . . . . . . : "$2}'
+            ip -4 route show default | grep "$interface" | awk '{print "   Default Gateway . . . . . . . . . : "$3}'
+            echo "   DNS Servers . . . . . . . . . . . : $(awk '/^nameserver/ {print $2}' /etc/resolv.conf)"
+            echo
+        done
+    else
+        for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
+            echo "Ethernet adapter $interface:"
+            ip -4 addr show "$interface" | awk '/inet / {sub(/\/.*/, "", $2); print "   IPv4 Address. . . . . . . . . . . : "$2}'
+            echo
+        done
+    fi
+}
+
+ipconfig_linux "$@"

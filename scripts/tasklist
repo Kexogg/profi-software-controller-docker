@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# Tasklist script.
+# App requires a windows-like tasklist command to work properly.
+# This script grabs the EXE name from the arguments and outputs fake data to prevent errors in the app.
+
+
+usage() {
+    echo "Usage: tasklist [/fi \"imagename eq <EXE_NAME>\"]"
+    exit 1
+}
+
+# Check for specific filter argument
+if [ "$1" = "/fi" ] && [ "$2" = "\"imagename" ] && [ "$3" = "eq" ]; then
+    EXE_NAME=$(echo "$4" | sed 's/"//g')
+
+    echo "Image Name                     PID Session Name        Session#    Mem Usage"
+    echo "========================= ======== ================ =========== ============"
+    echo "$EXE_NAME                  -999999 Services                   1     10,000 K"
+    exit 0
+fi
+
+ps -eo pid,tty,time,cmd
