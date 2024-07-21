@@ -1,6 +1,8 @@
 services:
   controller:
     build: .
+    # Uncomment the following line to use the image from the GitHub Container Registry
+    #image: ghcr.io/kexogg/profi-software-controller-docker:master
     ports:
       - "8070:8070"
     depends_on:

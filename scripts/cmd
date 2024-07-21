@@ -18,7 +18,7 @@ run_command() {
         "netstat")
             shift
             if [ -n "$6" ] && [ -n "$7" ] && [ -n "$8" ]; then
-                /bin/netstat -tulnp | grep "$4" | grep -c "$8"
+                /bin/netstat -tulnp | grep "$4" | grep -c "${8:0:6}"
             else
                 /bin/netstat -tulnp | grep "$4"
             fi
