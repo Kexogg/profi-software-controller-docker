@@ -1,34 +1,69 @@
 #!/bin/sh
 
+prefix_to_mask() {
+  prefix=$1
+  mask=""
+  for i in {1..32}; do
+    if [ $i -le $prefix ]; then
+      mask+="1"
+    else
+      mask+="0"
+    fi
+    if [ $((i % 8)) -eq 0 ] && [ $i -ne 32 ]; then
+      mask+="."
+    fi
+  done
+  IFS='.' read -r -a octets <<< "$mask"
+  for i in "${!octets[@]}"; do
+    octets[$i]=$((2#${octets[$i]}))
+  done
+  (IFS=.; echo "${octets[*]}")
+}
+
 # TODO: More testing required
 # Function to mimic ipconfig behavior
 ipconfig_linux() {
   echo "Windows IP Configuration"
+  echo ""
+  # Check if /all flag is passed
+  if [[ "$1" == "/all" ]]; then
+    echo "   Host Name . . . . . . . . . . . . : $(hostname)"
+    echo "   Primary Dns Suffix  . . . . . . . : "
+    echo "   Node Type . . . . . . . . . . . . : Hybrid"
+    echo "   IP Routing Enabled. . . . . . . . : No"
+    echo "   WINS Proxy Enabled. . . . . . . . : No"
     echo ""
-    # Check if /all flag is passed
-    if [[ "$1" == "/all" ]]; then
-          echo "   Host Name . . . . . . . . . . . . : $(hostname)"
-          echo "   Primary Dns Suffix  . . . . . . . : "
-          echo "   Node Type . . . . . . . . . . . . : Hybrid"
-          echo "   IP Routing Enabled. . . . . . . . : No"
-          echo "   WINS Proxy Enabled. . . . . . . . : No"
-          echo ""
-        for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
-            interface=$(echo "$interface" | cut -d'@' -f1)
-            echo "Ethernet adapter $interface:"
-            ip -4 addr show "$interface" | awk '/inet / {sub(/\/.*/, "", $2); print "   IPv4 Address. . . . . . . . . . . : "$2}'
-            ip -4 route show default | grep "$interface" | awk '{print "   Default Gateway . . . . . . . . . : "$3}'
-            echo "   DNS Servers . . . . . . . . . . . : $(awk '/^nameserver/ {print $2}' /etc/resolv.conf)"
-            echo
-        done
-    else
-        for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
-            interface=$(echo "$interface" | cut -d'@' -f1)
-            echo "Ethernet adapter $interface:"
-            ip -4 addr show "$interface" | awk '/inet / {sub(/\/.*/, "", $2); print "   IPv4 Address. . . . . . . . . . . : "$2}'
-            echo
-        done
-    fi
+    for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
+      interface=$(echo "$interface" | cut -d'@' -f1)
+      echo "Ethernet adapter $interface:"
+      # MAC Address
+      ip link show "$interface" | awk '/link\/ether/ {print "   Physical Address. . . . . . . . . : "toupper(gensub(/:/, "-", "g", $2))}'
+      # IPv4 Address
+      ip -4 addr show "$interface" | awk '/inet / {sub(/\/.*/, "", $2); print "   IPv4 Address. . . . . . . . . . . : "$2}'
+      # Subnet mask
+      prefix=$(ip -4 addr show "$interface" | awk '/inet / {print $2}' | cut -d'/' -f2)
+      [ -n "$prefix" ] && echo "   Subnet Mask . . . . . . . . . . . : $(prefix_to_mask "$(ip -4 addr show "$interface" | awk '/inet / {print $2}' | cut -d'/' -f2)")"
+      # Default Gateway
+      ip -4 route show default | grep "$interface" | awk '{print "   Default Gateway . . . . . . . . . : "$3}'
+      # DNS Servers
+      echo "   DNS Servers . . . . . . . . . . . : $(awk '/^nameserver/ {print $2}' /etc/resolv.conf)"
+      echo
+    done
+  else
+    for interface in $(ip -o link show | awk -F': ' '{print $2}'); do
+      interface=$(echo "$interface" | cut -d'@' -f1)
+      echo "Ethernet adapter $interface:"
+      echo ""
+      # IPv4 Address
+      ip -4 addr show "$interface" | awk '/inet / {sub(/\/.*/, "", $2); print "   IPv4 Address. . . . . . . . . . . : "$2}'
+      # Subnet mask
+      prefix=$(ip -4 addr show "$interface" | awk '/inet / {print $2}' | cut -d'/' -f2)
+      [ -n "$prefix" ] && echo "   Subnet Mask . . . . . . . . . . . : $(prefix_to_mask "$(ip -4 addr show "$interface" | awk '/inet / {print $2}' | cut -d'/' -f2)")"
+      # Default Gateway
+      ip -4 route show default | grep "$interface" | awk '{print "   Default Gateway . . . . . . . . . : "$3}'
+      echo
+    done
+  fi
 }
 
 ipconfig_linux "$@"
