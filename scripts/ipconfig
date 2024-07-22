@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 prefix_to_mask() {
   prefix=$1

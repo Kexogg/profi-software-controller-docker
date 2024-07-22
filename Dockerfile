@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-RUN apk add --update nginx curl socat openjdk8-jre xorg-server xvfb stalonetray && \
+RUN apk add --update nginx bash curl socat openjdk8-jre xorg-server xvfb stalonetray && \
     rm -rf /var/cache/apk/*
 
 COPY /scripts/ipconfig /usr/bin/ipconfig
