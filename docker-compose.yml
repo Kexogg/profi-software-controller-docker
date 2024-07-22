@@ -7,9 +7,9 @@ services:
       - mongo
       - redis
     volumes:
-    # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
-    #  - ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
-    #  - ./files/nginx/:/ipcom/nginx/
+      # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
+      #- ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
+      #- ./files/nginx/:/ipcom/nginx/
       - ipcom_data:/ipcom/data/
     networks:
       internal:
@@ -24,11 +24,15 @@ services:
     volumes:
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
       - mongo_data:/data/db
+    networks:
+      internal:
   redis:
     image: redis:latest
     command: /bin/sh -c "redis-server --requirepass fqta,dacb21db" # Do not change the password
     volumes:
       - redis_data:/data
+    networks:
+      internal:
 volumes:
   mongo_data:
   redis_data:

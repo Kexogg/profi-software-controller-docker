@@ -31,8 +31,8 @@ services:
          - redis
       volumes:
          # Uncomment the following lines to mount the jar file and nginx folder if you didn't build the image yourself
-         #  - ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
-         #  - ./files/nginx/:/ipcom/nginx/
+         #- ./files/soft_ac-0.0.1-SNAPSHOT.jar:/ipcom/soft_ac-0.0.1-SNAPSHOT.jar
+         #- ./files/nginx/:/ipcom/nginx/
          - ipcom_data:/ipcom/data/
       networks:
          internal:
@@ -59,8 +59,7 @@ services:
 volumes:
    mongo_data:
    redis_data:
-   ipcom_data:
-      
+
 networks:
    internal:
       external: false
