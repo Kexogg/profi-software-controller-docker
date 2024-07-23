@@ -59,7 +59,7 @@ services:
 volumes:
    mongo_data:
    redis_data:
-
+   ipcom_data:
 networks:
    internal:
       external: false
