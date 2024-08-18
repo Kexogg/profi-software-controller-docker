@@ -9,6 +9,7 @@ COPY /scripts/dummy /usr/bin/taskkill
 COPY /scripts/tzutil /usr/bin/tzutil
 COPY /scripts/cmd /usr/bin/cmd
 COPY /scripts/cmd /usr/bin/cmd.exe
+RUN chmod +x /usr/bin/ipconfig /usr/bin/tasklist /usr/bin/taskkill /usr/bin/tzutil /usr/bin/cmd /usr/bin/cmd.exe
 
 # Fake binaries for mongo and redis
 COPY /scripts/dummy /ipcom/bin/redis/redis-server-x86.exe
